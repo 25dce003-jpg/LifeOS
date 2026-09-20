@@ -1,0 +1,11 @@
+Date,Mode,Category,Subcategory,Note,Amount,Income/Expense,Currency');
+  if (startIndex === -1) {
+    console.log(\"Could not find the header string anywhere in the file.\");
+    process.exit(1);
+  }
+  console.log(\"Found header at:\", startIndex);
+  
+  // It might be inside a JSON string. So lines might be separated by \
+ or \\\
+.
+  const endIndex = data.indexOf('
