@@ -5,7 +5,7 @@ export const generateInsights = (dataset) => {
 
   const stats = calculateStats(dataset);
   const connections = buildConnectionEngine(dataset);
-  const chapters = buildStoryChapters(dataset);
+  const chapters = buildStoryChapters(dataset, connections);
 
   return { stats, connections, chapters };
 };
@@ -197,7 +197,7 @@ export const buildConnectionEngine = (dataset) => {
   return connections.sort((a, b) => b.date.getTime() - a.date.getTime());
 };
 
-const buildStoryChapters = (dataset) => {
+const buildStoryChapters = (dataset, allConnections = []) => {
   const chapters = [];
   const byMonth = {};
   dataset.forEach(item => {
@@ -266,8 +266,8 @@ const buildStoryChapters = (dataset) => {
     const title = `${monthName} Summary`;
     const summary = `During ${monthName}, there were ${items.length} total transactions. The most active category was ${topCategory}.`;
     
-    // Find connections inside this specific chapter
-    const chapterConnections = buildConnectionEngine(items);
+    // Filter connections that belong to this specific chapter
+    const chapterConnections = allConnections.filter(c => format(c.date, 'yyyy-MM') === monthKey);
 
     chapters.push({
       id: `chapter-${monthKey}`,

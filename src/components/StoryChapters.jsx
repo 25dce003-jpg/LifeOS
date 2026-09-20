@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { Receipt, X, ArrowUpRight, ArrowDownRight, RefreshCw, GitMerge, Calendar } from 'lucide-react';
+import { Receipt, X, ArrowUpRight, ArrowDownRight, RefreshCw, GitMerge, Calendar, Search } from 'lucide-react';
+import { useLifeContext } from '../context/LifeContext';
 
-export default function StoryChapters({ chapters }) {
+export default function StoryChapters() {
+  const { insights, navigateToExplorer } = useLifeContext();
+  const chapters = insights?.chapters || [];
   const [selectedChapter, setSelectedChapter] = useState(null);
 
   if (!chapters || chapters.length === 0) {
@@ -104,10 +107,17 @@ export default function StoryChapters({ chapters }) {
                         .sort((a,b) => b[1] - a[1])
                         .slice(0, 6)
                         .map(([cat, count], idx) => (
-                          <div key={idx} className="flex items-center justify-between group">
-                            <span className="text-slate-300 font-medium text-[13px] group-hover:text-white transition-colors">{cat}</span>
+                          <div 
+                            key={idx} 
+                            className="flex items-center justify-between group cursor-pointer"
+                            onClick={() => {
+                               setSelectedChapter(null);
+                               navigateToExplorer({ category: cat, month: format(selectedChapter.date, 'yyyy-MM') });
+                            }}
+                          >
+                            <span className="text-slate-300 font-medium text-[13px] group-hover:text-blue-400 transition-colors">{cat}</span>
                             <div className="flex items-center gap-3">
-                              <span className="text-slate-500 text-[11px] font-medium bg-white/5 px-2 py-0.5 rounded">{count} txns</span>
+                              <span className="text-slate-500 text-[11px] font-medium bg-white/5 px-2 py-0.5 rounded group-hover:bg-blue-500/10 group-hover:text-blue-400 transition-colors">{count} txns</span>
                               <span className="text-rose-400/90 text-[13px] font-semibold w-20 text-right">
                                 {selectedChapter.categorySpending[cat] ? `INR ${selectedChapter.categorySpending[cat].toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}` : '-'}
                               </span>
@@ -148,8 +158,22 @@ export default function StoryChapters({ chapters }) {
                           {selectedChapter.busiestDay ? format(new Date(selectedChapter.busiestDay.date), 'MMM do, yyyy') : 'N/A'}
                         </div>
                       </div>
-                      <div className="text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20 text-[12px]">
-                        {selectedChapter.busiestDay?.count || 0} txns
+                      <div className="flex items-center gap-2">
+                        <div className="text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20 text-[12px]">
+                          {selectedChapter.busiestDay?.count || 0} txns
+                        </div>
+                        {selectedChapter.busiestDay && (
+                          <button 
+                            onClick={() => {
+                              setSelectedChapter(null);
+                              navigateToExplorer({ searchTerm: format(new Date(selectedChapter.busiestDay.date), 'MMM dd, yyyy') });
+                            }}
+                            className="p-1.5 bg-white/5 hover:bg-blue-500/20 hover:text-blue-400 rounded-md transition-colors text-slate-400"
+                            title="Explore this day"
+                          >
+                            <Search className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -1,8 +1,13 @@
 import React, { useMemo } from 'react';
 import { Activity, ShoppingBag, Calendar, HeartPulse, ArrowDownRight, ArrowUpRight, RefreshCw, Layers } from 'lucide-react';
 import { format } from 'date-fns';
+import { useLifeContext } from '../context/LifeContext';
+import { StatCard } from './ui/StatCard';
+import { InsightCard } from './ui/InsightCard';
 
-export default function LifeOverview({ data, insights }) {
+export default function LifeOverview() {
+  const { data, insights, navigateToExplorer } = useLifeContext();
+
   if (!insights || !insights.stats || !data) return null;
 
   const { 
@@ -90,6 +95,7 @@ export default function LifeOverview({ data, insights }) {
             label="Top Category"
             value={topCategory.name}
             subtext={`${topCategory.count} transactions`}
+            onClick={() => navigateToExplorer({ category: topCategory.name })}
           />
         </div>
         <div className="animate-slide-up delay-300">
@@ -98,6 +104,7 @@ export default function LifeOverview({ data, insights }) {
             label="Busiest Day"
             value={mostActiveDay.date !== 'None' ? format(new Date(mostActiveDay.date), 'MMM do, yyyy') : 'N/A'}
             subtext={`${mostActiveDay.count} transactions`}
+            onClick={() => mostActiveDay.date !== 'None' && navigateToExplorer({ searchTerm: format(new Date(mostActiveDay.date), 'MMM dd, yyyy') })}
           />
         </div>
       </div>
@@ -119,13 +126,20 @@ export default function LifeOverview({ data, insights }) {
             const percentage = Math.round((count / categoryDistribution.maxCount) * 100);
             const totalPercentage = Math.round((count / categoryDistribution.total) * 100);
             return (
-              <div key={idx} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 group">
-                <div className="w-full sm:w-32 md:w-40 text-[12px] font-medium text-slate-300 truncate" title={cat}>
+              <div 
+                key={idx} 
+                className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 group cursor-pointer"
+                onClick={() => navigateToExplorer({ category: cat })}
+                role="button"
+                tabIndex={0}
+                aria-label={`Explore category ${cat}`}
+              >
+                <div className="w-full sm:w-32 md:w-40 text-[12px] font-medium text-slate-300 truncate group-hover:text-blue-400 transition-colors" title={cat}>
                   {cat}
                 </div>
-                <div className="flex-1 h-6 bg-black/40 rounded-md overflow-hidden flex items-center relative border border-white/5 shadow-inner">
+                <div className="flex-1 h-6 bg-black/40 rounded-md overflow-hidden flex items-center relative border border-white/5 shadow-inner group-hover:border-white/10 transition-colors">
                   <div 
-                    className="h-full bg-gradient-to-r from-blue-500/40 to-indigo-500/60 transition-all duration-1000 ease-out border-r border-blue-400/50" 
+                    className="h-full bg-gradient-to-r from-blue-500/40 to-indigo-500/60 transition-all duration-1000 ease-out border-r border-blue-400/50 group-hover:from-blue-500/60 group-hover:to-indigo-500/80" 
                     style={{ width: `${percentage}%` }}
                   />
                   <div className="absolute left-3 text-[11px] font-semibold tracking-wide text-white drop-shadow-md">
@@ -146,43 +160,20 @@ export default function LifeOverview({ data, insights }) {
         <InsightCard 
           title="Top Spending Category"
           description={`Your dataset indicates that "${topCategory.name}" is the most frequent category, appearing ${topCategory.count} times.`}
+          actionText={`Explore ${topCategory.name}`}
+          onAction={() => navigateToExplorer({ category: topCategory.name })}
         />
         <InsightCard 
           title="Most Active Period"
           description={`Your busiest single day involved ${mostActiveDay.count} distinct transactions on ${mostActiveDay.date !== 'None' ? format(new Date(mostActiveDay.date), 'MMM do, yyyy') : 'N/A'}.`}
+          actionText={mostActiveDay.date !== 'None' ? `View Activity on ${format(new Date(mostActiveDay.date), 'MMM do')}` : null}
+          onAction={() => mostActiveDay.date !== 'None' && navigateToExplorer({ searchTerm: format(new Date(mostActiveDay.date), 'MMM dd, yyyy') })}
         />
         <InsightCard 
           title="Dataset Scope"
           description={`This dataset covers activity spanning ${activeMonths} different months, comprising a total of ${totalMoments.toLocaleString()} individual records.`}
         />
       </div>
-    </div>
-  );
-}
-
-function StatCard({ icon, label, value, subtext }) {
-  return (
-    <div className="glass-panel h-full rounded-[20px] p-3.5 sm:p-4 flex flex-col justify-between transition-all duration-300 hover:bg-white/[0.03] hover:border-white/10 hover:shadow-[0_4px_20px_rgba(0,0,0,0.5)] group relative overflow-hidden">
-      {/* Subtle radial glow on hover */}
-      <div className="absolute inset-0 bg-radial-gradient from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-      
-      <div className="flex items-start justify-between mb-3 relative z-10">
-        <span className="text-slate-400 font-semibold text-[11px] tracking-widest uppercase truncate pr-2">{label}</span>
-        <div className="p-1.5 bg-black/40 border border-white/5 rounded-lg shrink-0 transition-transform duration-300 group-hover:scale-110">{icon}</div>
-      </div>
-      <div className="relative z-10">
-        <div className="text-[26px] md:text-[28px] font-bold tracking-tight text-white truncate leading-none" title={String(value)}>{value}</div>
-        <div className="text-[12px] font-medium text-slate-500 mt-1.5 truncate" title={subtext}>{subtext}</div>
-      </div>
-    </div>
-  );
-}
-
-function InsightCard({ title, description }) {
-  return (
-    <div className="glass-panel rounded-[20px] p-4 transition-all duration-300 hover:border-white/10 hover:bg-white/[0.03]">
-      <h3 className="text-[14px] font-bold text-white mb-1.5 tracking-tight leading-tight">{title}</h3>
-      <p className="text-slate-400 leading-relaxed text-[13px] font-light">{description}</p>
     </div>
   );
 }

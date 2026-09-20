@@ -1,34 +1,16 @@
-import { useState, useEffect } from 'react';
-import { loadDataset } from './utils/dataParser';
-import { generateInsights } from './utils/insightGenerator';
-import LifeOverview from './components/LifeOverview';
-import StoryChapters from './components/StoryChapters';
-import ConnectionEngine from './components/ConnectionEngine';
-import ReceiptExplorer from './components/ReceiptExplorer';
+import React, { useState, Suspense } from 'react';
+import { useLifeContext } from './context/LifeContext';
 import { Loader2, LayoutDashboard, BookOpen, GitMerge, Search } from 'lucide-react';
 
-function App() {
-  const [data, setData] = useState(null);
-  const [insights, setInsights] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [isTransitioning, setIsTransitioning] = useState(false);
+// Lazy loaded components to improve initial render performance
+const LifeOverview = React.lazy(() => import('./components/LifeOverview'));
+const StoryChapters = React.lazy(() => import('./components/StoryChapters'));
+const ConnectionEngine = React.lazy(() => import('./components/ConnectionEngine'));
+const ReceiptExplorer = React.lazy(() => import('./components/ReceiptExplorer'));
 
-  useEffect(() => {
-    const initData = async () => {
-      try {
-        const parsed = await loadDataset();
-        const generatedInsights = generateInsights(parsed);
-        setData(parsed);
-        setInsights(generatedInsights);
-      } catch (error) {
-        console.error("Failed to load data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    initData();
-  }, []);
+function App() {
+  const { data, insights, loading, activeTab, setActiveTab } = useLifeContext();
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const handleTabChange = (tab) => {
     if (tab === activeTab) return;
@@ -100,10 +82,16 @@ function App() {
         </div>
 
         <div className={`transition-opacity duration-150 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-          {activeTab === 'overview' && <LifeOverview data={data} insights={insights} />}
-          {activeTab === 'chapters' && <StoryChapters chapters={insights.chapters} />}
-          {activeTab === 'connections' && <ConnectionEngine connections={insights.connections} />}
-          {activeTab === 'explorer' && <ReceiptExplorer data={data} />}
+          <Suspense fallback={
+            <div className="flex justify-center p-12">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+            </div>
+          }>
+            {activeTab === 'overview' && <LifeOverview data={data} insights={insights} />}
+            {activeTab === 'chapters' && <StoryChapters chapters={insights.chapters} />}
+            {activeTab === 'connections' && <ConnectionEngine connections={insights.connections} />}
+            {activeTab === 'explorer' && <ReceiptExplorer data={data} />}
+          </Suspense>
         </div>
       </main>
       
