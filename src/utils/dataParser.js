@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import { parse, isValid, parseISO } from 'date-fns';
+import { isValid, parseISO } from 'date-fns';
 
 export const loadDataset = async () => {
   try {
@@ -25,41 +25,24 @@ export const loadDataset = async () => {
 
 const processRawData = (rawData) => {
   return rawData.map((row, index) => {
-    // Attempt to parse date
+    // Attempt to parse date (assuming DD/MM/YYYY or DD/MM/YYYY HH:mm format in CSV, but stripping time)
     let parsedDate = null;
-    let hasTime = false;
     if (row.Date) {
       const dateParts = row.Date.trim().split(' ');
       const dateOnly = dateParts[0];
-      const timeOnly = dateParts[1];
-      
-      hasTime = !!timeOnly;
-      const timeStr = timeOnly || '00:00:00';
       
       const [day, month, year] = dateOnly.split('/');
       if (day && month && year) {
-         const isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${timeStr}`;
+         // Create an ISO string for midnight UTC to avoid timezone issues or fabricated times
+         const isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00`;
          parsedDate = parseISO(isoString);
       }
-    }
-
-    // Derive Contextual Tag based on rules
-    let contextualTag = row.Category || 'Other';
-    if (row.Category?.toLowerCase() === 'subscription' && row.Subcategory?.toLowerCase() === 'netflix') {
-      contextualTag = 'Entertainment';
-    } else if (row.Category?.toLowerCase() === 'transportation') {
-      contextualTag = 'Travel';
-    } else if (row.Category?.toLowerCase() === 'culture' && row.Subcategory?.toLowerCase() === 'movie') {
-      contextualTag = 'Entertainment';
-    } else if (row.Category?.toLowerCase() === 'food' && row.Subcategory?.toLowerCase() === 'dinner') {
-      contextualTag = 'Dining';
     }
 
     return {
       id: `receipt-${index}`,
       originalDate: row.Date,
       date: isValid(parsedDate) ? parsedDate : null,
-      hasTime,
       mode: row.Mode,
       category: row.Category,
       subcategory: row.Subcategory,
@@ -67,7 +50,6 @@ const processRawData = (rawData) => {
       amount: parseFloat(row.Amount) || 0,
       type: row['Income/Expense'],
       currency: row.Currency,
-      contextualTag,
       raw: row
     };
   }).filter(item => item.date !== null) // Filter out items with invalid dates for timeline
