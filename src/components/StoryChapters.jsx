@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { Receipt, X, ArrowUpRight, ArrowDownRight, RefreshCw, GitMerge, Calendar, Search } from 'lucide-react';
-import { useLifeContext } from '../context/LifeContext';
+import { Receipt, X, ArrowUpRight, ArrowDownRight, RefreshCw, GitMerge, Calendar } from 'lucide-react';
+import { useLifeOS } from '../context/AppContext';
 
-export default function StoryChapters() {
-  const { insights, navigateToExplorer } = useLifeContext();
-  const chapters = insights?.chapters || [];
+export default function StoryChapters({ chapters }) {
   const [selectedChapter, setSelectedChapter] = useState(null);
+  const { navigateToExplorer } = useLifeOS();
 
   if (!chapters || chapters.length === 0) {
     return <div className="text-slate-400">No chapters generated yet.</div>;
@@ -93,7 +92,9 @@ export default function StoryChapters() {
                   <StatBox label="Expenses" value={`INR ${selectedChapter.totalExpense.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}`} icon={<ArrowUpRight className="w-3.5 h-3.5 text-rose-400" />} />
                   <StatBox label="Income" value={`INR ${selectedChapter.totalIncome.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}`} icon={<ArrowDownRight className="w-3.5 h-3.5 text-emerald-400" />} />
                   <StatBox label="Transfers" value={`INR ${selectedChapter.totalTransfers.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}`} icon={<RefreshCw className="w-3.5 h-3.5 text-purple-400" />} />
-                  <StatBox label="Primary Category" value={selectedChapter.topCategory} />
+                  <div onClick={() => { setSelectedChapter(null); navigateToExplorer({ category: selectedChapter.topCategory, month: selectedChapter.dateRange }); }} className="cursor-pointer group">
+                    <StatBox label="Primary Category" value={selectedChapter.topCategory} interactive />
+                  </div>
                 </div>
               </div>
 
@@ -107,17 +108,10 @@ export default function StoryChapters() {
                         .sort((a,b) => b[1] - a[1])
                         .slice(0, 6)
                         .map(([cat, count], idx) => (
-                          <div 
-                            key={idx} 
-                            className="flex items-center justify-between group cursor-pointer"
-                            onClick={() => {
-                               setSelectedChapter(null);
-                               navigateToExplorer({ category: cat, month: format(selectedChapter.date, 'yyyy-MM') });
-                            }}
-                          >
-                            <span className="text-slate-300 font-medium text-[13px] group-hover:text-blue-400 transition-colors">{cat}</span>
+                          <div key={idx} className="flex items-center justify-between group">
+                            <span className="text-slate-300 font-medium text-[13px] group-hover:text-white transition-colors">{cat}</span>
                             <div className="flex items-center gap-3">
-                              <span className="text-slate-500 text-[11px] font-medium bg-white/5 px-2 py-0.5 rounded group-hover:bg-blue-500/10 group-hover:text-blue-400 transition-colors">{count} txns</span>
+                              <span className="text-slate-500 text-[11px] font-medium bg-white/5 px-2 py-0.5 rounded">{count} txns</span>
                               <span className="text-rose-400/90 text-[13px] font-semibold w-20 text-right">
                                 {selectedChapter.categorySpending[cat] ? `INR ${selectedChapter.categorySpending[cat].toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}` : '-'}
                               </span>
@@ -158,22 +152,8 @@ export default function StoryChapters() {
                           {selectedChapter.busiestDay ? format(new Date(selectedChapter.busiestDay.date), 'MMM do, yyyy') : 'N/A'}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20 text-[12px]">
-                          {selectedChapter.busiestDay?.count || 0} txns
-                        </div>
-                        {selectedChapter.busiestDay && (
-                          <button 
-                            onClick={() => {
-                              setSelectedChapter(null);
-                              navigateToExplorer({ searchTerm: format(new Date(selectedChapter.busiestDay.date), 'MMM dd, yyyy') });
-                            }}
-                            className="p-1.5 bg-white/5 hover:bg-blue-500/20 hover:text-blue-400 rounded-md transition-colors text-slate-400"
-                            title="Explore this day"
-                          >
-                            <Search className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                      <div className="text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20 text-[12px]">
+                        {selectedChapter.busiestDay?.count || 0} txns
                       </div>
                     </div>
                   </div>
@@ -240,14 +220,17 @@ export default function StoryChapters() {
   );
 }
 
-function StatBox({ label, value, icon }) {
+function StatBox({ label, value, icon, interactive }) {
   return (
-    <div className="bg-black/20 rounded-xl p-3 sm:p-3.5 border border-white/5 transition-colors hover:bg-white/[0.02]">
+    <div className={`bg-black/20 rounded-xl p-3 sm:p-3.5 border border-white/5 transition-colors hover:bg-white/[0.02] group relative ${interactive ? 'cursor-pointer hover:border-white/20' : ''}`}>
       <div className="flex justify-between items-start mb-2">
         <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">{label}</div>
         {icon && <div>{icon}</div>}
       </div>
-      <div className="text-lg sm:text-xl font-bold text-white tracking-tight truncate" title={String(value)}>{value}</div>
+      <div className="text-lg sm:text-xl font-bold text-white tracking-tight truncate flex items-center justify-between" title={String(value)}>
+        <span>{value}</span>
+        {interactive && <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 text-blue-400 transition-opacity" />}
+      </div>
     </div>
   );
 }

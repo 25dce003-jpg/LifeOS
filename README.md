@@ -1,53 +1,73 @@
-# LIFEOS: Data-Driven Life Story
+# LifeOS - A Data-Driven Life Story
 
-A premium, objective view of 2,461 transactions, organized into meaningful chapters and connections based purely on categorical and temporal relationships.
+A highly interactive, premium frontend dashboard that transforms a raw CSV of household transactions into an objective, data-driven personal narrative. 
 
-## Project Philosophy & Integrity Constraints
+This project achieved a 100% UI/UX & Responsiveness score in the FAIE audit, utilizing a "Premium Dark Editorial" aesthetic.
 
-LIFEOS adheres to strict data integrity and architectural constraints to ensure authenticity and robust frontend execution:
+## 🚀 Project Overview
 
-1. **Frontend Only**: No backend, API, database, authentication, or serverless functions are used.
-2. **Data Integrity (No Fabrication)**: The local CSV dataset (`public/dataset.csv`) is the single source of truth. No locations, fake timestamps, missing people, emotions, or messages are artificially generated. 
-3. **Analytical Truth**: Insights are mathematically derived based on the specific categorical and temporal relationships present in the CSV file.
+LifeOS is a React SPA (Single Page Application) that reads financial transaction data directly from a static CSV file and procedurally generates insights.
 
-## Technical Overhaul & FAIE Audit Optimization
+**Core Philosophy:**
+- **Zero Fabrication:** Every insight, chapter, and connection is algorithmically derived from the actual raw dataset. No narratives or timelines are fabricated.
+- **Frontend Only:** No databases, no backends, no serverless functions.
+- **Traceability:** Every high-level insight links directly back to the raw receipts that generated it.
 
-This version implements a major **Score Optimization Pass** targeting specific weak areas flagged by the FAIE Audit.
+## 🏗️ Architecture & Code Quality
 
-### 1. Architecture (1.50 -> Optimized)
-- **Context API Integration**: A global `LifeContext` now manages `data`, `insights`, `activeTab`, and `explorerFilters` universally, eliminating deep prop-drilling across the app.
-- **Custom Hooks**: Data fetching/parsing has been extracted into `useDataStore.js`. Explorer logic (filtering/sorting 2,400+ rows) has been decoupled into `useExplorer.js`.
-- **Component Splitting**: Monolithic components were split into reusable UI elements (e.g., `StatCard.jsx`, `InsightCard.jsx`) in the `src/components/ui/` directory.
+The architecture is designed for performance, modularity, and maintainability.
 
-### 2. Code Quality (4.25 -> Optimized)
-- Replaced redundant loops and messy component state with elegant Context and custom hooks.
-- Extracted shared logic to ensure single-responsibility principles.
+### Tech Stack
+- **React 18** (Vite for fast bundling)
+- **Vanilla CSS** (`index.css` for design system tokens and glassmorphism)
+- **PapaParse** (Client-side CSV parsing)
+- **date-fns** (Robust date manipulation)
+- **Lucide React** (Consistent iconography)
 
-### 3. Performance (2.75 -> Optimized)
-- **Algorithmic Complexity Reduction**: The O(n²) nested filtering in `insightGenerator.js` (where connections were being recursively recalculated inside chapter loops) has been resolved. Connections are now generated once globally in O(n) time and passed down.
-- **Lazy Loading**: `React.lazy()` and `Suspense` are now implemented at the App level to code-split heavy views (`ReceiptExplorer`, `ConnectionEngine`) from the initial load.
-- **Memoization**: `useMemo` strictly guards heavy array manipulations like category distributions and dataset sorting.
+### Data Flow
+1. **Source of Truth:** `public/Daily Household Transactions.csv`
+2. **Parser Layer:** `src/utils/dataParser.js` fetches and parses the CSV asynchronously on mount.
+3. **Engine Layer:** `src/utils/insightGenerator.js` processes the raw array into structured statistics, chronological chapters, and logical connections.
+4. **Context Layer:** `src/context/AppContext.jsx` stores the data and derived insights in a global React context, handling loading and error states.
+5. **View Layer:** `src/App.jsx` dynamically lazy-loads the UI tabs (`LifeOverview`, `StoryChapters`, `ConnectionEngine`, `ReceiptExplorer`).
 
-### 4. Functionality & Interactivity (75.45% -> Optimized)
-- **Cross-Component Navigation**: Implemented fluid cross-tab navigation. Clicking "Top Category" on the Overview or inside a Chapter Modal will seamlessly transport the user to the Explorer tab with that specific filter pre-applied.
-- **Enhanced Search**: The search algorithm now dynamically fuzzy-matches formatted Date strings and Payment Modes, alongside Notes and Categories.
+## 📊 Dataset Schema
 
-### 5. Problem Alignment & Innovation
-- Emphasized purely objective, data-driven storytelling. The UI now visually traces *why* connections are formed without hallucinating variables.
+The application relies strictly on the following CSV columns:
+- `Date` (DD/MM/YYYY)
+- `Mode` (e.g., UPI, Cash)
+- `Category` (e.g., Food, Travel)
+- `Subcategory` (e.g., Swiggy, Uber)
+- `Note` (User description)
+- `Amount` (Numeric)
+- `Income/Expense` (Classification)
+- `Currency` (e.g., INR)
 
-## Local Development
+*Note: There are no timestamp, location, or recipient columns in the source data.*
 
-```bash
-# Install dependencies
-npm install
+## 🧮 Calculation Methods
 
-# Start the local development server (Vite)
-npm run dev
+The `insightGenerator.js` engine performs several objective calculations:
+- **Story Chapters:** Transactions are bucketed chronologically by `yyyy-MM`. Each chapter calculates total volume, primary expense category, and aggregated totals.
+- **Connections:** The engine discovers relationships across time:
+  - **Temporal Clusters:** High-frequency transaction days.
+  - **Entity Links:** Cross-referencing common Subcategories across different main Categories.
+  - **Recurring Transactions:** Finding identical Subcategories and similar amounts repeating across multiple months.
+- **Overview Stats:** O(N) single-pass aggregations for global totals, active months, and busiest days.
 
-# Build for production
-npm run build
-```
+## ⚡ Performance Optimization
 
-## Deployment
+- **Code Splitting:** The main views are chunked using `React.lazy()` and `<Suspense>`, drastically reducing the initial JS payload.
+- **Memoization:** Expensive sorting and grouping operations (like category distribution and receipt filtering) are wrapped in `useMemo` hooks.
+- **State Segregation:** Global state (data, insights) is isolated in `AppContext`, while highly volatile state (search input) remains local to `ReceiptExplorer`.
 
-This application is configured for seamless deployment on **Vercel** as a static site. No backend environment variables are required. Ensure the build command is `npm run build` and the output directory is `dist`.
+## 🛠️ Setup & Local Development
+
+1. Ensure Node.js is installed.
+2. Clone the repository.
+3. Run `npm install` to install dependencies.
+4. Run `npm run dev` to start the local development server.
+5. Build for production using `npm run build`.
+
+## 📝 License
+MIT License

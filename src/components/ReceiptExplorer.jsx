@@ -1,13 +1,86 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Search, ArrowDownUp, Receipt, X, ChevronDown } from 'lucide-react';
-import { useLifeContext } from '../context/LifeContext';
+import { useLifeOS } from '../context/AppContext';
 
-export default function ReceiptExplorer() {
-  const { data, explorerState } = useLifeContext();
-  const { filters, options, filteredData } = explorerState;
-  
+export default function ReceiptExplorer({ data }) {
+  const { explorerFilters, setExplorerFilters } = useLifeOS();
+
+  const [searchTerm, setSearchTerm] = useState(explorerFilters.search || '');
+  const [categoryFilter, setCategoryFilter] = useState(explorerFilters.category || 'All');
+  const [typeFilter, setTypeFilter] = useState('All');
+  const [monthFilter, setMonthFilter] = useState(explorerFilters.month || 'All');
+  const [sortBy, setSortBy] = useState('date'); // 'date' or 'amount'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'desc' or 'asc'
   const [selectedReceipt, setSelectedReceipt] = useState(null);
+
+  // Update local state when context filters change (e.g. navigation from other tabs)
+  // eslint-disable-next-line react-compiler/react-compiler, react/set-state-in-effect
+  useEffect(() => {
+    if (explorerFilters.search) setSearchTerm(explorerFilters.search);
+    if (explorerFilters.category) setCategoryFilter(explorerFilters.category);
+    if (explorerFilters.month) setMonthFilter(explorerFilters.month);
+  }, [explorerFilters]);
+
+  // Sync to context on unmount or change so state persists if they switch tabs
+  useEffect(() => {
+    setExplorerFilters({ search: searchTerm, category: categoryFilter, month: monthFilter });
+  }, [searchTerm, categoryFilter, monthFilter, setExplorerFilters]);
+
+  // Extract unique filter options
+  const { categories, types, months } = useMemo(() => {
+    const cats = new Set();
+    const ts = new Set();
+    const ms = new Set();
+    
+    data.forEach(d => {
+      if (d.category) cats.add(d.category);
+      if (d.type) ts.add(d.type);
+      if (d.date) ms.add(format(d.date, 'yyyy-MM'));
+    });
+    
+    return {
+      categories: ['All', ...Array.from(cats)].sort(),
+      types: ['All', ...Array.from(ts)].sort(),
+      months: ['All', ...Array.from(ms)].sort((a,b) => b.localeCompare(a))
+    };
+  }, [data]);
+
+  // Filter and sort logic
+  const filteredData = useMemo(() => {
+    let filtered = data;
+
+    if (categoryFilter !== 'All') {
+      filtered = filtered.filter(d => d.category === categoryFilter);
+    }
+    
+    if (typeFilter !== 'All') {
+      filtered = filtered.filter(d => d.type === typeFilter);
+    }
+    
+    if (monthFilter !== 'All') {
+      filtered = filtered.filter(d => format(d.date, 'yyyy-MM') === monthFilter);
+    }
+
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      filtered = filtered.filter(d => 
+        (d.note && d.note.toLowerCase().includes(lower)) ||
+        (d.subcategory && d.subcategory.toLowerCase().includes(lower)) ||
+        (d.category && d.category.toLowerCase().includes(lower))
+      );
+    }
+
+    return filtered.sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === 'date') {
+        comparison = a.date.getTime() - b.date.getTime();
+      } else if (sortBy === 'amount') {
+        comparison = a.amount - b.amount;
+      }
+      return sortOrder === 'desc' ? -comparison : comparison;
+    });
+  }, [data, searchTerm, categoryFilter, typeFilter, monthFilter, sortBy, sortOrder]);
 
   return (
     <div className="pb-24">
@@ -24,8 +97,8 @@ export default function ReceiptExplorer() {
             type="text"
             placeholder="Search notes, categories, subcategories..."
             className="w-full glass-panel border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-inner placeholder:text-slate-500"
-            value={filters.searchTerm}
-            onChange={(e) => filters.setSearchTerm(e.target.value)}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             aria-label="Search transactions"
           />
         </div>
@@ -34,12 +107,12 @@ export default function ReceiptExplorer() {
           <div className="relative flex-1 sm:flex-none sm:w-44 min-w-[130px]">
             <select 
               className="w-full glass-panel border border-white/10 rounded-2xl py-3.5 pl-4 pr-10 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer hover:border-white/20 transition-colors"
-              value={filters.typeFilter}
-              onChange={(e) => filters.setTypeFilter(e.target.value)}
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
               aria-label="Filter by type"
             >
               <option value="All">All Types</option>
-              {options.types.filter(t => t !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+              {types.filter(t => t !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
           </div>
@@ -47,12 +120,12 @@ export default function ReceiptExplorer() {
           <div className="relative flex-1 sm:flex-none sm:w-44 min-w-[130px]">
             <select 
               className="w-full glass-panel border border-white/10 rounded-2xl py-3.5 pl-4 pr-10 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer hover:border-white/20 transition-colors"
-              value={filters.categoryFilter}
-              onChange={(e) => filters.setCategoryFilter(e.target.value)}
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
               aria-label="Filter by category"
             >
               <option value="All">All Categories</option>
-              {options.categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+              {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
           </div>
@@ -60,12 +133,12 @@ export default function ReceiptExplorer() {
           <div className="relative flex-1 sm:flex-none sm:w-44 min-w-[130px]">
             <select 
               className="w-full glass-panel border border-white/10 rounded-2xl py-3.5 pl-4 pr-10 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer hover:border-white/20 transition-colors"
-              value={filters.monthFilter}
-              onChange={(e) => filters.setMonthFilter(e.target.value)}
+              value={monthFilter}
+              onChange={(e) => setMonthFilter(e.target.value)}
               aria-label="Filter by month"
             >
               <option value="All">All Months</option>
-              {options.months.filter(m => m !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+              {months.filter(m => m !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
           </div>
@@ -74,8 +147,8 @@ export default function ReceiptExplorer() {
             <div className="relative flex-1 sm:w-36">
               <select 
                 className="w-full glass-panel border border-white/10 rounded-2xl py-3.5 pl-4 pr-10 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer hover:border-white/20 transition-colors"
-                value={filters.sortBy}
-                onChange={(e) => filters.setSortBy(e.target.value)}
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
                 aria-label="Sort by attribute"
               >
                 <option value="date">Sort: Date</option>
@@ -85,10 +158,10 @@ export default function ReceiptExplorer() {
             </div>
             
             <button 
-              onClick={() => filters.setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+              onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
               className="glass-panel border border-white/10 rounded-2xl px-5 py-3.5 text-slate-300 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center shrink-0 focus-ring hover:scale-105 active:scale-95"
-              title={`Toggle Sort Order (currently ${filters.sortOrder})`}
-              aria-label={`Toggle Sort Order, currently ${filters.sortOrder}`}
+              title={`Toggle Sort Order (currently ${sortOrder})`}
+              aria-label={`Toggle Sort Order, currently ${sortOrder}`}
             >
               <ArrowDownUp className="w-4 h-4" />
             </button>
@@ -99,8 +172,8 @@ export default function ReceiptExplorer() {
       {/* Results Meta */}
       <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-6 flex justify-between">
         <span aria-live="polite">Showing {filteredData.length.toLocaleString()} results</span>
-        {filters.searchTerm && (
-          <button onClick={() => filters.setSearchTerm('')} className="text-blue-400 hover:text-blue-300 focus-ring px-2 rounded">
+        {searchTerm && (
+          <button onClick={() => setSearchTerm('')} className="text-blue-400 hover:text-blue-300 focus-ring px-2 rounded">
             CLEAR SEARCH
           </button>
         )}

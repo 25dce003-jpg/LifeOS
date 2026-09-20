@@ -5,7 +5,7 @@ export const generateInsights = (dataset) => {
 
   const stats = calculateStats(dataset);
   const connections = buildConnectionEngine(dataset);
-  const chapters = buildStoryChapters(dataset, connections);
+  const chapters = buildStoryChapters(dataset);
 
   return { stats, connections, chapters };
 };
@@ -107,6 +107,39 @@ export const buildConnectionEngine = (dataset) => {
      }
   });
 
+  // 1.5 Recurring Transactions (Subscriptions/Bills)
+  const bySubcategory = {};
+  sorted.forEach(item => {
+    if (!processedIds.has(item.id) && item.subcategory) {
+      if (!bySubcategory[item.subcategory]) bySubcategory[item.subcategory] = [];
+      bySubcategory[item.subcategory].push(item);
+    }
+  });
+
+  for (const [subcat, items] of Object.entries(bySubcategory)) {
+    if (items.length >= 3) {
+      const months = new Set(items.map(i => format(i.date, 'yyyy-MM')));
+      if (months.size >= 3) {
+        const avgAmt = items.reduce((s, i) => s + i.amount, 0) / items.length;
+        // Check if amounts are within 15% variance
+        const allSimilar = items.every(i => Math.abs(i.amount - avgAmt) / (avgAmt || 1) < 0.15);
+        
+        if (allSimilar) {
+          connections.push({
+             id: `conn-recurring-${Math.random().toString(36).substring(2, 7)}`,
+             type: 'Recurring Transaction',
+             title: `Recurring: ${subcat}`,
+             reason: `Consistently similar amounts spent on "${subcat}" across ${months.size} different months.`,
+             receipts: items,
+             date: items[items.length - 1].date,
+             stats: `${months.size} Months`
+          });
+          items.forEach(i => processedIds.add(i.id));
+        }
+      }
+    }
+  }
+
   // Pre-group by day for remaining connection types
   const byDay = {};
   sorted.forEach(item => {
@@ -197,7 +230,7 @@ export const buildConnectionEngine = (dataset) => {
   return connections.sort((a, b) => b.date.getTime() - a.date.getTime());
 };
 
-const buildStoryChapters = (dataset, allConnections = []) => {
+const buildStoryChapters = (dataset) => {
   const chapters = [];
   const byMonth = {};
   dataset.forEach(item => {
@@ -266,8 +299,8 @@ const buildStoryChapters = (dataset, allConnections = []) => {
     const title = `${monthName} Summary`;
     const summary = `During ${monthName}, there were ${items.length} total transactions. The most active category was ${topCategory}.`;
     
-    // Filter connections that belong to this specific chapter
-    const chapterConnections = allConnections.filter(c => format(c.date, 'yyyy-MM') === monthKey);
+    // Find connections inside this specific chapter
+    const chapterConnections = buildConnectionEngine(items);
 
     chapters.push({
       id: `chapter-${monthKey}`,

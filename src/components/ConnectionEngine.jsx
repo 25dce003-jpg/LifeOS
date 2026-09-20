@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { GitMerge, ArrowRight, X, Calendar, Repeat, Layers, TrendingUp, AlertTriangle, Search } from 'lucide-react';
-import { useLifeContext } from '../context/LifeContext';
+import { GitMerge, ArrowRight, X, Calendar, Repeat, Layers, TrendingUp, AlertTriangle } from 'lucide-react';
 
-export default function ConnectionEngine() {
-  const { insights, navigateToExplorer } = useLifeContext();
-  const connections = insights?.connections || [];
+export default function ConnectionEngine({ connections }) {
   const [selectedConn, setSelectedConn] = useState(null);
 
   if (!connections || connections.length === 0) {
@@ -129,20 +126,10 @@ export default function ConnectionEngine() {
                   <h2 id="conn-modal-title" className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-tight">
                     {selectedConn.title}
                   </h2>
-                  <div className="text-slate-400 mt-1.5 flex gap-2 items-center text-[12px] font-medium flex-wrap">
+                  <div className="text-slate-400 mt-1.5 flex gap-2 items-center text-[12px] font-medium">
                     <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(selectedConn.date, 'MMMM do, yyyy')}</span>
                     <span className="text-white/20">•</span>
                     <span>{selectedConn.receipts.length} Transactions</span>
-                    
-                    <button 
-                      onClick={() => {
-                        setSelectedConn(null);
-                        navigateToExplorer({ searchTerm: format(selectedConn.date, 'MMM dd, yyyy') });
-                      }}
-                      className="ml-2 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 hover:text-white px-2 py-1 rounded-md transition-colors flex items-center gap-1 focus-ring"
-                    >
-                      <Search className="w-3 h-3" /> Explore Related
-                    </button>
                   </div>
                 </div>
               </div>
